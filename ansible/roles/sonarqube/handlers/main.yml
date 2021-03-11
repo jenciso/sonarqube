@@ -1,0 +1,5 @@
+---
+- name: restart sonarqube
+  shell: "docker-compose -f docker-compose.yml up --force-recreate -d"
+  args:
+    chdir: "{{ sonar.dir }}"

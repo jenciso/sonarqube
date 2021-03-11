@@ -1,0 +1,43 @@
+stages:
+  - deploy-prd
+  - deploy-lab
+
+default:
+  image: unicred/ansible-docker
+  before_script:
+    - echo "Preparing ansible environment"
+    - eval $(ssh-agent -s)
+    - echo "${ANSIBLE_SSH_PRIVATE_KEY}" | tr -d ' ' | base64 --decode | ssh-add - > /dev/null
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    - echo "Preparing vault setup"
+    - echo "${ANSIBLE_VAULT_PASSWORD}" > ./ansible/vault_password.txt
+    - export ANSIBLE_VAULT_PASSWORD_FILE=./vault_password.txt
+  tags:
+    - deploy
+
+deploy-prd:
+  stage: deploy-prd
+  variables:
+    SONAR_URL: "https://sonarqube.docs-planet.site"
+    SONAR_NGINX_ENABLED: "false"
+  script:
+    - echo "Deploy via ansible"
+    - cd ansible && ansible-playbook site.yml -i inventory
+  tags:
+    - deploy
+  only:
+    - master
+
+deploy-lab:
+  stage: deploy-lab
+  variables:
+    SONAR_URL: "https://sonar-lab.docs-planet.site"
+    SONAR_NGINX_ENABLED: "true"
+  script:
+    - echo "Deploy via ansible"
+    - cd ansible && ansible-playbook site.yml -i inventory-lab
+  tags:
+    - deploy
+  except:
+    - master

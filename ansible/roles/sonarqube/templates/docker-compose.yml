@@ -1,0 +1,94 @@
+version: "3.7"
+
+services:
+{% if sonar.nginx.enabled is sameas true %}
+  nginx:
+    image: nginx
+    restart: always
+    networks:
+      - sonarnet
+    volumes:
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./conf/ssl_certificate.crt:/etc/nginx/ssl_certificate.crt
+      - ./conf/ssl_certificate.key:/etc/nginx/ssl_certificate.key
+      - ./conf/ssl_dhparam.pem:/etc/nginx/ssl_dhparam.pem
+    ports:
+      - "80:80"
+      - "443:443"
+{% endif %}
+  sonarqube:
+    image: sonarqube:8.2-community
+    restart: always
+    networks:
+      - sonarnet
+    environment:
+      - sonar.log.level.web=INFO
+      - sonar.jdbc.username=sonar
+      - sonar.jdbc.password=password
+      - sonar.jdbc.url=jdbc:postgresql://db:5432/sonar
+      - sonar.web.javaAdditionalOpts=-Duser.timezone={{ timezone }}
+      - sonar.ce.javaAdditionalOpts=-Duser.timezone={{ timezone }}
+      - sonar.search.javaAdditionalOpts=-Duser.timezone={{ timezone }}
+      - sonar.core.serverBaseURL={{ sonar.core.serverBaseURL }}
+      - sonar.security.savePassword=true
+      - sonar.security.updateUserAttributes=true
+      - sonar.lf.enableGravatar=true
+      - email.smtp_host.secured={{ email.smtp_host.secured }}
+      - email.from={{ email.from }}
+{% if sonar.plugins.oidc.enabled is sameas true %}
+      - sonar.auth.oidc.enabled=true
+      - sonar.auth.oidc.issuerUri={{ sonar.auth.oidc.issuerUri }}
+      - sonar.auth.oidc.clientId.secured={{ sonar.auth.oidc.clientId.secured }}
+      - sonar.auth.oidc.clientSecret.secured={{ sonar.auth.oidc.clientSecret.secured }}
+      - sonar.auth.oidc.allowUsersToSignUp=true
+      - sonar.auth.oidc.groupsSync=true
+      - sonar.auth.oidc.groupsSync.claimName=groups
+{% endif %}
+{% if proxy_enabled is sameas true %}
+    command: -Dhttp.proxyHost={{ proxy_server }} -Dhttp.proxyPort={{ proxy_port }}
+{% endif %}
+    volumes:
+      - sonarqube_conf:/opt/sonarqube/conf
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+{% if sonar.plugins.oidc.enabled is sameas true %}
+      - type: bind
+        source: ./plugins/sonar-auth-oidc-plugin-2.0.0.jar
+        target: /opt/sonarqube/extensions/plugins/sonar-auth-oidc-plugin-2.0.0.jar
+{% endif %}
+{% if sonar.plugins.branch.enabled is sameas true %}
+      - type: bind
+        source: ./plugins/sonarqube-community-branch-plugin-1.3.2-SNAPSHOT.jar
+        target: /opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin-1.3.2-SNAPSHOT.jar
+      - type: bind
+        source: ./plugins/sonarqube-community-branch-plugin-1.3.2-SNAPSHOT.jar
+        target: /opt/sonarqube/lib/common/sonarqube-community-branch-plugin-1.3.2-SNAPSHOT.jar
+{% endif %}
+    ports:
+      - "9009:9000"
+    ulimits:
+      nofile:
+       soft: 65536
+       hard: 65536
+  db:
+    image: postgres
+    restart: always
+    networks:
+      - sonarnet
+    environment:
+      - POSTGRES_USER=sonar
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgresql:/var/lib/postgresql
+      - postgresql_data:/var/lib/postgresql/data
+
+networks:
+  sonarnet:
+    driver: bridge
+
+volumes:
+  sonarqube_conf:
+  sonarqube_data:
+  sonarqube_extensions:
+  postgresql:
+  postgresql_data:

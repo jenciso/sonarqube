@@ -1,0 +1,9 @@
+---
+- name: sonarqube | main playbook
+  hosts: all
+  remote_user: ansible
+  become: true
+  become_user: root
+  roles:
+    - sonarqube
+  environment: "{{ proxy_env }}"

@@ -1,0 +1,4 @@
+---
+nginx_ssl_cert_crt: "{{ lookup('env', 'SSL_CERT_E_UNICRED_CRT') }}"
+nginx_ssl_cert_key: "{{ lookup('env', 'SSL_CERT_E_UNICRED_KEY') }}"
+nginx_ssl_dhparam_pem: "{{ lookup('env', 'SSL_NGINX_DHPARAM_PEM') }}"

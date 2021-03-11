@@ -1,0 +1,10 @@
+---
+### Proxy
+proxy_enabled: true
+proxy_server: 192.168.0.20
+proxy_port: 8080
+proxy_url: http://{{ proxy_server }}:{{ proxy_port }}
+proxy_env:
+  http_proxy: "{{ proxy_url }}"
+  https_proxy: "{{ proxy_url }}"
+  no_proxy: "127.0.0.1, localhost"

@@ -1,0 +1,62 @@
+---
+- name: sonarqube | setup host server
+  sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    state: present
+    reload: yes
+
+
+- name: sonarqube | create run directory
+  file:
+    path: "{{ sonar.dir }}/conf"
+    state: directory
+    mode: 0755
+
+
+- name: sonarqube | nginx configuration
+  template:
+    src: conf/nginx.conf
+    dest: "{{ sonar.dir }}/conf/nginx.conf"
+  notify: restart sonarqube
+
+
+- name: sonarqube | nginx ssl files
+  shell: |
+    echo {{ nginx_ssl_cert_crt }} | base64 -d > {{ sonar.dir }}/conf/ssl_certificate.crt
+    echo {{ nginx_ssl_cert_key }} | base64 -d > {{ sonar.dir }}/conf/ssl_certificate.key
+    echo {{ nginx_ssl_dhparam_pem }} | base64 -d > {{ sonar.dir }}/conf/ssl_dhparam.pem
+  notify: restart sonarqube
+
+
+- name: sonarqube | plugins
+  include: plugins.yml
+
+
+- name: sonarqube | copying docker-compose.yml
+  template:
+    src: docker-compose.yml
+    dest: "{{ sonar.dir }}"
+    mode: 0644
+  notify: restart sonarqube
+
+
+- name: sonarqube | start service
+  shell: docker-compose up -d
+  args:
+    chdir: "{{ sonar.dir }}"
+
+
+- name: sonarqube | change the default admin password
+  uri:
+    url: "{{ sonar.core.serverBaseURL }}/api/users/change_password?login=admin&previousPassword=admin&password={{ sonar.admin.password }}"
+    status_code: 204
+    method: POST
+    user: admin
+    password: admin
+    force_basic_auth: yes
+  register: _result
+  until: _result.status == 204
+  retries: 180
+  delay: 5
+  when: sonarqube_change_password | bool

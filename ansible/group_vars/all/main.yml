@@ -1,0 +1,31 @@
+---
+## Sonar general
+timezone: America/Sao_Paulo
+
+## Sonar properties
+sonarqube_change_password: false
+
+sonar:
+  dir: /data/sonarqube
+  admin:
+    password: "{{ lookup('env','SONAR_ADMIN_PASSWORD') | default('admin', true) }}"
+  core:
+    serverBaseURL: "{{ lookup('env','SONAR_URL') | default('https://sonarqube.docs-planet.site', true) }}"
+  auth:
+    oidc:
+      issuerUri: https://sso.docs-planet.site:8443/auth/realms/plataforma
+      clientId:
+        secured: sonarqube
+      clientSecret:
+        secured: cbc770a6-d47b-453c-95a8-5fdba8624758
+  nginx:
+    enabled: "{{ lookup('env','SONAR_NGINX_ENABLED') | bool }}"
+  plugins:
+    oidc:
+      enabled: true
+    branch:
+      enabled: true
+email:
+  from: noreply@docs-planet.site
+  smtp_host:
+    secured: relay.docs-planet.site
